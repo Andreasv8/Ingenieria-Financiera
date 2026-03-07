@@ -1,0 +1,138 @@
+---
+title: 'HW 15: Indicadores'
+author: "Sam"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Instrucciones
+
+Construye un portafolio que contenga 100 acciones del activo que tiene tu proyecto y 100 acciones de otro activo de libre elección (sea de la BMX).
+
+Usa la información histórica (mensual) de los últimos 5 años, y determina lo que se solicita:
+
+-   Ratio de Sharpe
+
+-   Indicador de Treynor
+
+-   VaR mensual al 99% de confianza (la metodología a utilizar es de libre elección)
+
+-   Volatilidad histórica mensual 
+
+-   Rendimiento promedio mensual
+
+Usando los resultados anteriores, escribe al menos párrafo donde concluyas sobre la viabilidad o no de invertir en el portafolio que construiste.
+
+# Ratio de Sharpe
+
+```{r include=FALSE}
+library(quantmod)
+library(readxl)
+```
+
+```{r}
+clave <- c('Q.MX','BIMBOA.MX')
+datos <- new.env()
+getSymbols(clave, from = '2020-05-01',to = '2025-05-01', env=datos)
+precio_q <- datos[[clave[1]]][,6] * 100
+precio_b <- datos[[clave[2]]][,6] * 100
+precio_p <- precio_q + precio_b
+
+precio_p <- to.monthly(precio_p)[,4]
+
+r_p <- monthlyReturn(precio_p)
+```
+
+```{r}
+getSymbols('^MXX', from = '2020-05-01',to = '2025-05-01', env=datos)
+precio_m <- datos[['MXX']][,6]
+
+precio_m <- to.monthly(precio_m)[,4]
+
+r_m <- monthlyReturn(precio_m)
+```
+
+```{r}
+r_f <- read_xlsx('Cete_6.xlsx')
+r_f$SF43936 <- as.numeric(r_f$SF43936/100/12)
+r_f <- as.xts(r_f$SF43936,order.by = r_f$Fecha)
+
+r_f <- to.monthly(r_f)[,4]
+
+r_f <- r_f[-c(1:4), ]
+```
+
+```{r}
+Sharpe <- (mean(r_p) - mean(r_f)) /sd(r_p)
+Sharpe
+```
+
+Por cada unidad de riesgo, obtenemos un Ratio de Sharpe de 0.1897 unidades de retorno en exceso sobre la tasa libre de riesgo, lo cuál es bastante bajo, MUY BAJO - Raul
+
+# Ratio de Treynor
+
+```{r}
+E_jf <- r_p - r_f
+E_mf <- r_m - r_f
+```
+
+```{r}
+CAPM <- lm(E_jf ~ E_mf)
+resultados <- summary(CAPM)
+```
+
+```{r}
+beta = resultados$coefficients[2]
+beta
+```
+
+```{r}
+Treynor = (mean(r_p) - mean(r_f)) / beta
+Treynor
+```
+
+Obtuvimos un Ratio de Treynor de 0.0171. El índice es menor a 1, por lo que el portafolio registra menor variabilidad que el índice. Por cada `beta` unidades de riesgo sistemático asumido, el inversionista se vio recompensado con un rendimiento del 0.0171 mensual.
+
+# VaR al 99%
+
+```{r}
+V0 <- as.numeric(last(precio_p))
+```
+
+```{r}
+precio_fp <- V0*(1+r_p)
+```
+
+```{r}
+f_per_gan <- precio_fp - V0
+```
+
+```{r}
+hist(f_per_gan, n=60)
+```
+
+```{r}
+VaR_99 <- quantile(f_per_gan, 0.01)
+VaR_99
+```
+
+# Volatilidad histórica mensual
+
+```{r}
+vol <- sd(r_p)
+vol
+```
+
+# Rendimiento promedio mensual
+
+```{r}
+mean(r_p)
+```
+
+# Conclusión
+
+Aunque el portafolio genera rendimientos mensuales positivos y tiene una volatilidad moderada, su **Ratio de Sharpe es bajo**, lo que sugiere que el rendimiento obtenido no compensa adecuadamente el nivel de riesgo total asumido. No obstante, el **bajo beta** indica que el portafolio tiene una **exposición limitada al riesgo sistemático**, lo cual puede ser atractivo en tiempos de incertidumbre o alta volatilidad del mercado.
+
+El **VaR** muestra que las pérdidas potenciales podrían ser significativas en escenarios extremos, aunque no desproporcionadas considerando el tamaño del portafolio.
+
+**En resumen**, el portafolio podría ser viable para un inversionista con un perfil de riesgo **moderado a conservador**, interesado en mantener una exposición relativamente baja al mercado y que valore la estabilidad por encima de altos retornos. Sin embargo, para perfiles más agresivos, este portafolio **no sería recomendable**, pues no ofrece una relación riesgo-retorno suficientemente atractiva.

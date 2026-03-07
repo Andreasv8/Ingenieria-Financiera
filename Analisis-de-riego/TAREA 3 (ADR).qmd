@@ -1,0 +1,131 @@
+---
+title: "HW 3: Stylized Asset Return Facts"
+author: "Andrea Santoyo Vega"
+date: "2025-02-10"
+output: html_document
+---
+
+## Verificando Hecho estilizado 1 con las acciones de Apple Inc, Tesla Inc, y Airbnb Inc.
+
+```{r}
+library(quantmod)
+datos1 <- new.env()
+clave <- "AAPL"
+getSymbols(clave, env=datos1)
+precio1 <- datos1[[clave]][,6]
+plot(precio1)
+```
+
+Para la acción de apple, la cual cotiza en el Nasdaq Stock Market, se puede observar que cumple con las características del hecho estilizado 1. El hecho estilizado 1 dice que los precios siguen un comportamiento de caminata aletoria. En esta gráfica podemos observar como el comportamiento claramente no sigue una tendencia, y el precio fluctua libremente.
+
+```{r}
+library(quantmod)
+datos2 <- new.env()
+clave <- "TSLA"
+getSymbols(clave, env=datos2)
+precio2 <- datos2[[clave]][,6]
+plot(precio2)
+```
+
+El comportamiento y falta de tendecia se vuelve a presentar en este activo
+
+```{r}
+library(quantmod)
+datos3 <- new.env()
+clave <- "ABNB"
+getSymbols(clave, env=datos3)
+precio3 <- datos3[[clave]][,6]
+plot(precio3)
+```
+
+Una vez más vemos que el precio fluctua de manera libre y aleatoria en la acción de Airbnb.
+
+## Verificando Hecho estilizado 2 con las acciones de Apple Inc, Tesla Inc, y Airbnb Inc.
+
+El hecho estilizado 2 dice que la distribución del rendimiento del precio tiene una forma aproximadamente "acampanada". A continuación analizaremos las gráficas de distribución de rendimiento de las acciones anteriores.
+
+```{r}
+rendimiento1 <- na.omit(diff(log(precio1)))
+hist(rendimiento1, n=100, main="Histograma del rendimiento" , prob=TRUE)
+lines(density(rendimiento1), col="blue", lwd=2)
+xval <- seq(min(rendimiento1), max(rendimiento1), length.out=100)
+lines(xval, dnorm(xval, mean=mean(rendimiento1), sd=sd(rendimiento1)), col="darkgreen", lwd="3")
+```
+
+```{r}
+rendimiento2 <- na.omit(diff(log(precio2)))
+hist(rendimiento2, n=100, main="Histograma del rendimiento" , prob=TRUE)
+lines(density(rendimiento2), col="blue", lwd=2)
+xval <- seq(min(rendimiento2), max(rendimiento2), length.out=100)
+lines(xval, dnorm(xval, mean=mean(rendimiento2), sd=sd(rendimiento2)), col="darkgreen", lwd="3")
+```
+
+```{r}
+rendimiento3 <- na.omit(diff(log(precio3)))
+hist(rendimiento3, n=100, main="Histograma del rendimiento" , prob=TRUE)
+lines(density(rendimiento3), col="blue", lwd=2)
+xval <- seq(min(rendimiento3), max(rendimiento3), length.out=100)
+lines(xval, dnorm(xval, mean=mean(rendimiento3), sd=sd(rendimiento3)), col="darkgreen", lwd="3")
+```
+
+Como podemos observar en las 3 gráficas de disperción del rendimiento de las acciones, se cumple con el hecho de tener una forma acampanada, lo que significa que es una distribución normal. Por lo tanto queda demostrado que los 3 activos cumplen con el estilizado 2.
+
+## Verificando Hecho estilizado 3 con las acciones de Apple Inc, Tesla Inc, y Airbnb Inc.
+
+```{r}
+plot(rendimiento1)
+```
+```{r}
+to.monthly(precio1)
+```
+```{r}
+chart_Series(to.monthly(precio1))
+add_BBands()
+```
+```{r}
+plot(rendimiento2)
+```
+```{r}
+to.monthly(precio2)
+```
+```{r}
+chart_Series(to.monthly(precio2))
+add_BBands()
+```
+```{r}
+plot(rendimiento3)
+```
+```{r}
+to.monthly(precio3)
+```
+```{r}
+chart_Series(to.monthly(precio3))
+add_BBands()
+```
+Según el hecho estilizado 3 los rendimientos presentan volatilidad no constante. Esto se puede verificar revisando las bandas de Bollinger. Si las bandas se expandes y se estrechan, esto quiere decir que la volatilidad no es constante. En estas 3 últimas gráficas podemos ver como al principio las bandas son bastante estrechas y al final estas mismas se expanden. Esto verifica que tan poco constante es la volatilidad.
+
+## Verificando Hecho estilizado 4 con las acciones de Apple Inc, Tesla Inc, y Airbnb Inc.
+Por último el hecho estilizado 4 confirma que la distribución de los rendimientos presentan leptocurtosis. 
+
+leptocurtosis es cuando en los rendimientos hay un exceso de datos al rededor de la media.
+
+```{r}
+min(rendimiento1)
+max(rendimiento1)
+mean(rendimiento1)
+```
+
+```{r}
+min(rendimiento2)
+max(rendimiento2)
+mean(rendimiento2)
+```
+
+```{r}
+min(rendimiento3)
+max(rendimiento3)
+mean(rendimiento3)
+```
+con estos últimos calculos podemos ver que las colas para los 3 activos son bastantes pesadas que también es una característica del hecho estilizado 4. De esta manera verificamos que en efecto se cumple este último hecho. 
+
+Como conclusión podemos ver que las 3 acciones ("AAPL","TSLA","ABNB") cumplen con los 4 hechos estilizados. 

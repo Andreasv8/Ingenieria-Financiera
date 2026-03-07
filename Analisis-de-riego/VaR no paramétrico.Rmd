@@ -1,0 +1,187 @@
+---
+title: "VaR no paramétrico"
+author: "Sam"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r include=FALSE}
+library(quantmod)
+library(tibble)
+```
+
+# Introducción
+
+Supongamos que tenemos un portafolio que tiene las siguientes características:
+
+-   300 acciones de PINFRA
+
+-   200 acciones de SORIANA
+
+Trabajaremos con una metodología histórica, la cual no asume un comportamiento específico.
+
+El procedimiento de esta metodología consiste en lo siguiente:
+
+1.  Calcular un valor inicial de portafolio
+
+2.  Estimar precios futuros de cada uno de los activos que componen el portafolio y con eso vamos a determinar valores futuros de portafolio
+
+3.  Encontrar una función de pérdida y ganancias
+
+4.  Encontrar el valor del VaR por medio de la función percentil
+
+# 1. Valor inicial del portafolio
+
+```{r}
+clave <- c('PINFRA.MX','SORIANAB.MX')
+datos <- new.env()
+getSymbols(clave, from='2021-08-05', env=datos)
+precio_pinfra <- datos[[clave[1]]][,6]
+precio_soriana <- datos[[clave[2]]][,6]
+
+V0 <- as.numeric(300*last(precio_pinfra) + 200*last(precio_soriana))
+V0
+```
+
+# 2. Estimar valores futuros de precio
+
+Aquí usaremos la metología de simulación histórica
+
+$$
+S_t=S_0(1+R_h)
+$$
+
+Donde $R_h$ es el rendimiento histórico de manera que tendremos tantas simulaciones como valores de rendimiento tengamos
+
+```{r}
+rend_pinfra <- na.omit(diff(log(precio_pinfra)))
+rend_soriana <- na.omit(diff(log(precio_soriana)))
+
+precio_fpinfra <- as.numeric(last(precio_pinfra))*(1+rend_pinfra)
+precio_fsoriana <- as.numeric(last(precio_soriana))*(1+rend_soriana)
+
+v_futuro <- 300*precio_fpinfra + 200*precio_fsoriana
+names(v_futuro) <- 'valor_p'
+```
+
+# 3. Calcular la función de pérdidas y ganancias
+
+```{r}
+f_per_gan <- v_futuro - V0
+```
+
+Si el valor es positivo, significa que en ese escenario estamos previendo una ganancia, de lo contrario, se preveé una pérdida
+
+```{r}
+hist(f_per_gan, n=100, col='darkorchid', main='Función de Pérdidas y Ganancias')
+```
+
+# 4. Calcular VaR
+
+```{r}
+VaR90 <- quantile(f_per_gan, 0.1)
+VaR95 <- quantile(f_per_gan, 0.05)
+VaR99 <- quantile(f_per_gan, 0.01)
+```
+
+```{r}
+VaR <- tibble(
+  VaR_90 = VaR90, 
+  VaR_95 = VaR95,
+  VaR_99 = VaR99
+  )
+
+VaR
+```
+
+VaR Proporcional (ej. al 90%):
+
+```{r}
+VaR90/V0
+```
+
+```{r}
+hist(f_per_gan, n=100, col='darkorchid', main='Función de Pérdidas y Ganancias')
+abline(v=VaR90, col='darkgreen',lwd=2)
+abline(v=VaR95, col='blue',lwd=2)
+abline(v=VaR99, col='red',lwd=2)
+```
+
+# Expected Short Fall
+
+Esta medida nos dice el promedio de las pérdidas estimadas que superen el valor del VaR.
+
+Por ejemplo, ESF al 90%:
+
+```{r}
+cola90 <- subset(f_per_gan, f_per_gan<VaR90)
+
+hist(cola90, n=10, col='darkorchid')
+```
+
+```{r}
+ESF90 <- mean(cola90)
+ESF90
+```
+
+# Conclusión de los resultados
+
+Con un 90% de certeza, la pérdida máxima esperada en un día es de \$1,180, lo cuál equivale al 1.796% del valor del portafolio. Si la pérdida supera el promedio de pérdida esperada es de \$1,769.61
+
+# Empleando Simulación Montecarlo...
+
+## Simulación del precio de PINFRA
+
+```{r}
+mu_pinfra <- mean(rend_pinfra)
+sigma_pinfra <- sd(rend_pinfra)
+S0_pinfra <- as.numeric(last(precio_pinfra))
+
+sim <- 100000
+```
+
+```{r}
+set.seed(42)
+
+p_final_pinfra <- S0_pinfra*exp((mu_pinfra-0.5*sigma_pinfra^2)+sigma_pinfra*rnorm(sim))
+```
+
+## Simulación del precio de SORIANA
+
+```{r}
+mu_soriana <- mean(rend_soriana)
+sigma_soriana <- sd(rend_soriana)
+S0_soriana <- as.numeric(last(precio_soriana))
+```
+
+```{r}
+set.seed(42)
+
+p_final_soriana <- S0_soriana*exp((mu_soriana-0.5*sigma_soriana^2)+sigma_soriana*rnorm(sim))
+```
+
+```{r}
+v_f <- 300*p_final_pinfra + 200*p_final_soriana
+f_montecarlo <- v_f - V0
+
+hist(f_montecarlo, n=100, col='darkorchid', main='Función de Pérdidas y Ganancias con Montecarlo')
+```
+
+# Cálculo de VaR
+
+```{r}
+VaR90_mon <- quantile(f_montecarlo, 0.1)
+VaR95_mon <- quantile(f_montecarlo, 0.05)
+VaR99_mon <- quantile(f_montecarlo, 0.01)
+```
+
+```{r}
+VaR_comp <- tibble(
+  Tipo = c('Sim_histórica', 'Sim_montecarlo'),
+  VaR_90 = c(VaR90, VaR90_mon), 
+  VaR_95 = c(VaR95, VaR95_mon),
+  VaR_99 = c(VaR99, VaR99_mon)
+  )
+
+VaR_comp
+```
